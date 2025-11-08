@@ -1,6 +1,7 @@
 """Integration tests for complex dataflow scenarios."""
 
 from dataclasses import dataclass
+from datetime import timedelta
 
 import bytewax.operators as op
 from bytewax.dataflow import Dataflow
@@ -267,16 +268,16 @@ def test_collect_then_process_batches():
     out = []
 
     flow = Dataflow("batch_process")
-    s = op.input("inp", flow, TestingSource(range(10)))
+    s = op.input("inp", flow, TestingSource([("key", i) for i in range(10)]))
     # Collect into batches of 3
-    batches = op.collect("batch", s, max_size=3)
+    batches = op.collect("batch", s, timedelta(seconds=1), max_size=3)
     # Process each batch - sum the numbers
-    sums = op.map("sum_batch", batches, sum)
+    sums = op.map("sum_batch", batches, lambda kv: (kv[0], sum(kv[1])))
     op.output("out", sums, TestingSink(out))
 
     run_main(flow)
     # [0,1,2], [3,4,5], [6,7,8], [9]
-    assert out == [3, 12, 21, 9]
+    assert out == [("key", 3), ("key", 12), ("key", 21), ("key", 9)]
 
 
 def test_inspect_multiple_points():
@@ -287,9 +288,9 @@ def test_inspect_multiple_points():
 
     flow = Dataflow("multi_inspect")
     s = op.input("inp", flow, TestingSource([1, 2, 3]))
-    s = op.inspect("before", s, inspected_before.append)
+    s = op.inspect("before", s, lambda step_id, x: inspected_before.append(x))
     s = op.map("double", s, lambda x: x * 2)
-    s = op.inspect("after", s, inspected_after.append)
+    s = op.inspect("after", s, lambda step_id, x: inspected_after.append(x))
     op.output("out", s, TestingSink(out))
 
     run_main(flow)

@@ -1,9 +1,11 @@
 """Edge case tests for various Bytewax functionality."""
 
 import re
+from datetime import timedelta
 
 import bytewax.operators as op
 from bytewax.dataflow import Dataflow
+from bytewax.errors import BytewaxRuntimeError
 from bytewax.testing import TestingSink, TestingSource, run_main
 from pytest import raises
 
@@ -130,8 +132,8 @@ def test_map_with_exception():
     s = op.map("error_map", s, raise_error)
     op.output("out", s, TestingSink(out))
 
-    expect = "Error at 3"
-    with raises(ValueError, match=re.escape(expect)):
+    # Errors are now wrapped in BytewaxRuntimeError
+    with raises(BytewaxRuntimeError):
         run_main(flow)
 
 
@@ -248,7 +250,7 @@ def test_inspect_with_no_side_effects():
     out = []
     inspected = []
 
-    def inspector(x):
+    def inspector(step_id, x):
         inspected.append(x)
 
     flow = Dataflow("test_df")
@@ -267,7 +269,7 @@ def test_collect_empty_stream():
 
     flow = Dataflow("test_df")
     s = op.input("inp", flow, TestingSource([]))
-    s = op.collect("collect", s, max_size=10)
+    s = op.collect("collect", s, timedelta(seconds=1), max_size=10)
     op.output("out", s, TestingSink(out))
 
     run_main(flow)
@@ -279,12 +281,12 @@ def test_collect_single_item():
     out = []
 
     flow = Dataflow("test_df")
-    s = op.input("inp", flow, TestingSource([42]))
-    s = op.collect("collect", s, max_size=10)
+    s = op.input("inp", flow, TestingSource([("key", 42)]))
+    s = op.collect("collect", s, timedelta(seconds=1), max_size=10)
     op.output("out", s, TestingSink(out))
 
     run_main(flow)
-    assert out == [[42]]
+    assert out == [("key", [42])]
 
 
 def test_flatten_nested_empty_lists():

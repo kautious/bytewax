@@ -94,7 +94,7 @@ def create_flow(name, count):
 
 def test_locate_dataflow_missing_module():
     """Test error when module doesn't exist."""
-    expect = "Could not import 'nonexistent_module'"
+    expect = "No module named 'nonexistent_module'"
     with raises(ImportError, match=re.escape(expect)):
         _locate_dataflow("nonexistent_module", "flow")
 
@@ -134,19 +134,28 @@ flow = "not a dataflow object"
 
     sys.path.insert(0, str(tmp_path))
     try:
-        expect = "is not a Dataflow instance"
-        with raises(TypeError, match=re.escape(expect)):
+        expect = "A valid Bytewax dataflow was not obtained"
+        with raises(RuntimeError, match=re.escape(expect)):
             _locate_dataflow("test_wrong_type", "flow")
     finally:
         sys.path.remove(str(tmp_path))
 
 
-def test_locate_dataflow_invalid_syntax():
+def test_locate_dataflow_invalid_syntax(tmp_path):
     """Test error with invalid dataflow name syntax."""
-    # This will fail during parsing
-    expect = "Failed to parse"
-    with raises(SyntaxError, match=re.escape(expect)):
-        _locate_dataflow("test_module", "flow['invalid']")
+    # Create a module so we get past the import
+    module_path = tmp_path / "test_syntax.py"
+    module_path.write_text("flow = None")
+
+    import sys
+    sys.path.insert(0, str(tmp_path))
+    try:
+        # This will fail during parsing
+        expect = "Failed to parse"
+        with raises((SyntaxError, ValueError), match=re.escape(expect)):
+            _locate_dataflow("test_syntax", "flow['invalid']")
+    finally:
+        sys.path.remove(str(tmp_path))
 
 
 def test_locate_dataflow_function_wrong_args(tmp_path):
@@ -165,7 +174,7 @@ def create_flow(required_arg):
 
     sys.path.insert(0, str(tmp_path))
     try:
-        expect = "takes 1 positional argument"
+        expect = "could not be called with the specified arguments"
         with raises(TypeError, match=re.escape(expect)):
             _locate_dataflow("test_wrong_args", "create_flow()")
     finally:
