@@ -99,6 +99,55 @@ def add_fluent_methods() -> None:
         Dataflow.input = _dataflow_input  # type: ignore
 
 
+def remove_fluent_methods() -> None:
+    """Remove fluent methods from Stream and Dataflow classes.
+
+    Call this function to restore the original Stream and Dataflow classes
+    by removing the fluent API methods added by add_fluent_methods().
+
+    Example:
+        ```python
+        from bytewax.fluent import add_fluent_methods, remove_fluent_methods
+
+        # Enable fluent methods
+        add_fluent_methods()
+
+        # Use fluent API
+        # ...
+
+        # Clean up when done
+        remove_fluent_methods()
+        ```
+
+    Note:
+        This removes methods added by add_fluent_methods().
+        Useful for testing or cleanup.
+
+    """
+    # Remove methods from Stream
+    attrs_to_remove = [
+        "map",
+        "filter",
+        "flat_map",
+        "key_on",
+        "map_value",
+        "filter_value",
+        "filter_map",
+        "filter_map_value",
+        "inspect_debug",
+        "collect",
+        "flatten",
+        "output",
+    ]
+    for attr in attrs_to_remove:
+        if hasattr(Stream, attr):
+            delattr(Stream, attr)
+
+    # Remove methods from Dataflow
+    if hasattr(Dataflow, "input"):
+        delattr(Dataflow, "input")
+
+
 # Stream fluent methods
 
 
