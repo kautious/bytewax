@@ -78,6 +78,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--bytewax-log-level",
         action="store",
+        default=None,
         choices=["ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
     )
 
