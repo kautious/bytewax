@@ -59,8 +59,9 @@ def test_bytewax_runtime_error_in_operator():
     s = op.map("raise_error", s, raise_runtime_error)
     op.output("out", s, TestingSink(out))
 
-    expect = "Error at item 2"
-    with raises(BytewaxRuntimeError, match=re.escape(expect)):
+    # Bytewax wraps errors with its own message mentioning the operator step
+    expect = "error calling.*mapper.*raise_error"
+    with raises(BytewaxRuntimeError, match=expect):
         run_main(flow)
 
 

@@ -94,16 +94,18 @@ def _categorize_operator(name: str, docstring: Optional[str]) -> str:
     name_lower = name.lower()
     doc_lower = (docstring or "").lower()
 
-    if any(kw in name_lower or kw in doc_lower for kw in terminal_keywords):
+    # Check exact name matches first before keyword matching
+    if name_lower == "input":
+        return "source"
+    elif name_lower in ["output", "inspect", "inspect_debug"]:
         return "terminal"
-    elif any(kw in name_lower or kw in doc_lower for kw in window_keywords):
+    # Then check keywords in docstrings
+    elif any(kw in doc_lower for kw in window_keywords):
         return "windowing"
     elif any(kw in name_lower or kw in doc_lower for kw in stateful_keywords):
         return "stateful"
     elif any(kw in name_lower or kw in doc_lower for kw in multi_stream_keywords):
         return "multi-stream"
-    elif name_lower in ["input"]:
-        return "source"
     else:
         return "stateless"
 

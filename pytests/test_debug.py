@@ -2,6 +2,8 @@
 
 import time
 
+import pytest
+
 import bytewax.operators as op
 from bytewax.dataflow import Dataflow
 from bytewax.debug import (
@@ -240,10 +242,10 @@ def test_operator_stats_record():
     stats.record(0.3)
 
     assert stats.call_count == 3
-    assert stats.total_time == 0.6
-    assert stats.avg_time == 0.2
-    assert stats.min_time == 0.1
-    assert stats.max_time == 0.3
+    assert stats.total_time == pytest.approx(0.6)
+    assert stats.avg_time == pytest.approx(0.2)
+    assert stats.min_time == pytest.approx(0.1)
+    assert stats.max_time == pytest.approx(0.3)
 
 
 def test_get_operator_stats_all():
@@ -407,6 +409,8 @@ def test_stream_sampler_does_not_affect_output():
 
 def test_profile_function_with_errors():
     """Test profiling when function raises error."""
+    from bytewax.errors import BytewaxRuntimeError
+
     clear_operator_stats()
 
     @profile_function("error_func")
@@ -424,7 +428,7 @@ def test_profile_function_with_errors():
 
     try:
         run_main(flow)
-    except ValueError:
+    except BytewaxRuntimeError:
         pass
 
     # Stats should still be recorded for successful calls

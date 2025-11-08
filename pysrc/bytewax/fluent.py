@@ -241,7 +241,11 @@ def _stream_inspect(
         Unchanged stream.
 
     """
-    return op.inspect(step_id, self, inspector)
+    # Wrap inspector to match Bytewax's expected signature (step_id, item)
+    def wrapper(step_id_param: str, item: X) -> None:
+        inspector(item)
+
+    return op.inspect(step_id, self, wrapper)
 
 
 def _stream_collect(
@@ -258,7 +262,18 @@ def _stream_collect(
         Stream of lists.
 
     """
-    return op.collect(step_id, self, max_size, timeout)
+    from datetime import timedelta
+
+    # Default timeout if not provided
+    if timeout is None:
+        timeout = timedelta(seconds=1)
+
+    # op.collect requires a keyed stream, so add a global key
+    keyed = op.key_on(f"{step_id}_key", self, lambda x: "all")
+    # Call collect with correct parameter order: (step_id, stream, timeout, max_size)
+    batched = op.collect(step_id, keyed, timeout, max_size)
+    # Remove keys from output
+    return op.map(f"{step_id}_unkey", batched, lambda kv: kv[1])
 
 
 def _stream_flatten(self: Stream[Iterable[X]], step_id: str) -> Stream[X]:
@@ -386,13 +401,29 @@ class FluentStream(Generic[X]):
         self, step_id: str, inspector: Callable[[X], Any]
     ) -> "FluentStream[X]":
         """Inspect items."""
-        return FluentStream(op.inspect(step_id, self._stream, inspector))
+        # Wrap inspector to match Bytewax's expected signature (step_id, item)
+        def wrapper(step_id_param: str, item: X) -> None:
+            inspector(item)
+
+        return FluentStream(op.inspect(step_id, self._stream, wrapper))
 
     def collect(
         self, step_id: str, max_size: int, timeout: Optional[Any] = None
     ) -> "FluentStream[list[X]]":
         """Collect into batches."""
-        return FluentStream(op.collect(step_id, self._stream, max_size, timeout))
+        from datetime import timedelta
+
+        # Default timeout if not provided
+        if timeout is None:
+            timeout = timedelta(seconds=1)
+
+        # op.collect requires a keyed stream, so add a global key
+        keyed = op.key_on(f"{step_id}_key", self._stream, lambda x: "all")
+        # Call collect with correct parameter order
+        batched = op.collect(step_id, keyed, timeout, max_size)
+        # Remove keys from output
+        unkeyed = op.map(f"{step_id}_unkey", batched, lambda kv: kv[1])
+        return FluentStream(unkeyed)
 
     def output(self, step_id: str, sink: Sink) -> None:
         """Output to sink."""

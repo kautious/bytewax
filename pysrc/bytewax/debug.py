@@ -87,7 +87,7 @@ class StreamSampler:
             self._samples[name] = []
 
         # Create inspector that captures samples
-        def capture(item):
+        def capture(step_id: str, item):
             if len(self._samples[name]) < self.max_samples:
                 # Store a copy to avoid mutation issues
                 try:
@@ -205,7 +205,7 @@ def capture_stream(
     """
     captured: List[Any] = []
 
-    def capture(item):
+    def capture(step_id_param: str, item):
         if len(captured) < max_items:
             try:
                 import copy
@@ -261,17 +261,16 @@ class OperatorStats:
 _operator_stats: Dict[str, OperatorStats] = {}
 
 
-def profile_function(step_id: str, func: Callable) -> Callable:
-    """Wrap a function to profile its execution time.
+def profile_function(step_id: str) -> Callable:
+    """Create a decorator to profile function execution time.
 
     This is useful for profiling mapper, filter, and other user functions.
 
     Args:
         step_id: Identifier for this function (for stats).
-        func: Function to profile.
 
     Returns:
-        Wrapped function that records timing.
+        Decorator function that wraps the target function.
 
     Example:
         ```python
@@ -295,16 +294,19 @@ def profile_function(step_id: str, func: Callable) -> Callable:
     if step_id not in _operator_stats:
         _operator_stats[step_id] = OperatorStats(step_id)
 
-    def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        try:
-            result = func(*args, **kwargs)
-            return result
-        finally:
-            elapsed = time.perf_counter() - start
-            _operator_stats[step_id].record(elapsed)
+    def decorator(func: Callable) -> Callable:
+        def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            try:
+                result = func(*args, **kwargs)
+                return result
+            finally:
+                elapsed = time.perf_counter() - start
+                _operator_stats[step_id].record(elapsed)
 
-    return wrapper
+        return wrapper
+
+    return decorator
 
 
 def get_operator_stats(step_id: Optional[str] = None) -> Dict[str, OperatorStats]:
@@ -444,7 +446,7 @@ class StreamCounter:
         if name not in self._counts:
             self._counts[name] = 0
 
-        def increment(_item):
+        def increment(step_id: str, item):
             self._counts[name] += 1
 
         return op.inspect(f"{name}_counter", stream, increment)

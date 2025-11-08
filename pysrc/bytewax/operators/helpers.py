@@ -118,9 +118,9 @@ def deduplicate(step_id: str, stream, key_fn: Optional[Callable[[X], str]] = Non
 
     # If no key function, key by the item itself (converted to string)
     if key_fn is None:
-        keyed = op.key_on(f"{step_id}.key_on", stream, lambda x: str(x))
+        keyed = op.key_on(f"{step_id}_key_on", stream, lambda x: str(x))
     else:
-        keyed = op.key_on(f"{step_id}.key_on", stream, key_fn)
+        keyed = op.key_on(f"{step_id}_key_on", stream, key_fn)
 
     # Use stateful_map to track seen keys
     def dedup_mapper(state: Optional[bool], value: X) -> Tuple[bool, Optional[X]]:
@@ -131,10 +131,10 @@ def deduplicate(step_id: str, stream, key_fn: Optional[Callable[[X], str]] = Non
             # Already seen this key, filter it out
             return (True, None)
 
-    deduped = op.stateful_map(f"{step_id}.stateful", keyed, dedup_mapper)
+    deduped = op.stateful_map(f"{step_id}_stateful", keyed, dedup_mapper)
 
     # Filter out None values
-    result = op.filter_map(f"{step_id}.filter", deduped, lambda kv: kv[1])
+    result = op.filter_map(f"{step_id}_filter", deduped, lambda kv: kv[1])
 
     return result
 
@@ -200,7 +200,7 @@ def take(step_id: str, stream, n: int):
     import bytewax.operators as op
 
     # Key everything to single key to maintain global count
-    keyed = op.key_on(f"{step_id}.key", stream, lambda x: "global")
+    keyed = op.key_on(f"{step_id}_key", stream, lambda x: "global")
 
     # Track count and filter
     def take_mapper(state: Optional[int], value):
@@ -210,10 +210,10 @@ def take(step_id: str, stream, n: int):
         else:
             return (count, None)
 
-    taken = op.stateful_map(f"{step_id}.stateful", keyed, take_mapper)
+    taken = op.stateful_map(f"{step_id}_stateful", keyed, take_mapper)
 
     # Filter out None values
-    result = op.filter_map(f"{step_id}.filter", taken, lambda kv: kv[1])
+    result = op.filter_map(f"{step_id}_filter", taken, lambda kv: kv[1])
 
     return result
 
