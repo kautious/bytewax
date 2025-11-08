@@ -297,9 +297,11 @@ def test_validation_warning_for_unused_branches():
 
 def test_validation_with_collect_operator():
     """Test validation with collect operator."""
+    from datetime import timedelta
+
     flow = Dataflow("collect_flow")
     s = op.input("inp", flow, TestingSource([1, 2, 3, 4, 5]))
-    batched = op.collect("batch", s, max_size=2)
+    batched = op.collect("batch", s, timeout=timedelta(seconds=1), max_size=2)
     op.output("out", batched, TestingSink([]))
 
     errors, warnings = validate_dataflow(flow)

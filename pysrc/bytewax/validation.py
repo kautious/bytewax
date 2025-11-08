@@ -110,7 +110,7 @@ def _check_has_input(flow: Dataflow) -> List[ValidationError]:
     errors = []
 
     all_steps = _collect_all_steps(flow)
-    has_input = any(step.step_name == "input" for step in all_steps)
+    has_input = any(type(step).__name__ == "input" for step in all_steps)
 
     if not has_input:
         errors.append(
@@ -129,7 +129,7 @@ def _check_has_output(flow: Dataflow) -> List[ValidationError]:
     errors = []
 
     all_steps = _collect_all_steps(flow)
-    has_output = any(step.step_name == "output" for step in all_steps)
+    has_output = any(type(step).__name__ == "output" for step in all_steps)
 
     if not has_output:
         errors.append(
@@ -208,28 +208,11 @@ def _check_unused_operators(flow: Dataflow) -> List[ValidationWarning]:
     all_steps = _collect_all_steps(flow)
 
     # Find operators that don't lead to an output
-    # This is a heuristic - check if operator is in a branch that doesn't
-    # reach an output. For now, just warn about operators with no downstream
-    # connections in their substeps.
+    # This is a heuristic - for now, we skip this check as it's too aggressive
+    # and flags many valid operators (input, internal operators, etc.)
+    # A more sophisticated check would trace the dataflow graph.
 
-    for step in all_steps:
-        # If an operator has no substeps and is not an output, it might be unused
-        # (unless it's in a branch that leads to output)
-        if (
-            hasattr(step, "substeps")
-            and not step.substeps
-            and step.step_name != "output"
-        ):
-            # Check if this is a terminal operator type that's OK
-            terminal_types = {"inspect", "output"}
-            if step.step_name not in terminal_types:
-                warnings.append(
-                    ValidationWarning(
-                        code="POSSIBLY_UNUSED",
-                        message=f"Operator may not be connected to output: {step.step_name}",
-                        step_id=step.step_id,
-                    )
-                )
+    # TODO: Implement proper dataflow graph traversal to detect truly unused operators
 
     return warnings
 

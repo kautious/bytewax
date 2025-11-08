@@ -28,7 +28,7 @@ result = (
 
 """
 
-from typing import Any, Callable, Optional, Tuple, TypeVar
+from typing import Any, Callable, Generic, Iterable, Optional, Tuple, TypeVar
 
 import bytewax.operators as op
 from bytewax.dataflow import Dataflow, Stream
